@@ -2,6 +2,8 @@ require 'uri'
 
 module CcavenueGateway
   class Instance
+    include AESCrypto
+
     attr_accessor :config
     def initialize(tenant_id)
       @config = Configuration.new(tenant_id)
@@ -23,50 +25,20 @@ module CcavenueGateway
       end
     end
 
-    def payment
-      client = Client.new(@config)
-      @payment ||= Payment.new(client)
+    def client
+      @client = Client.new(@config)
     end
 
     def encrypt_hash_to_query(hash)
-      query_string = hash_to_query(hash.merge!({ merchant_id: @config.merchant_id }))
-      encrypt(query_string)
+      query_string = AESCrypto.hash_to_query(hash.merge!({ merchant_id: @config.merchant_id }))
+      AESCrypto.encrypt(query_string, @config.working_key)
     end
 
-    def decrypt_data(cipher_text)
-      query = decrypt(cipher_text)
-      URI.decode_www_form(query).to_h.symbolize_keys
+    def decrypt_to_hash(cipher_text)
+      query = AESCrypto.decrypt(cipher_text, @config.working_key)
+      AESCrypto.query_to_hash_and_symbolize(query)
     rescue OpenSSL::Cipher::CipherError
       raise CcavenueGateway::SignatureVerificationFailureError
-    end
-
-    private
-
-    def hash_to_query(hash)
-      URI.encode_www_form(hash)
-    end
-
-    INIT_VECTOR = (0..15).to_a.pack("C*")    
-  
-    def encrypt(plain_text)
-        secret_key =  [Digest::MD5.hexdigest(@config.working_key)].pack("H*") 
-        cipher = OpenSSL::Cipher::Cipher.new('aes-128-cbc')
-        cipher.encrypt
-        cipher.key = secret_key
-        cipher.iv  = INIT_VECTOR
-        encrypted_text = cipher.update(plain_text) + cipher.final
-        return (encrypted_text.unpack("H*")).first
-    end
-  
-    def decrypt(cipher_text)
-        secret_key =  [Digest::MD5.hexdigest(@config.working_key)].pack("H*")
-        encrypted_text = [cipher_text].pack("H*")
-        decipher = OpenSSL::Cipher::Cipher.new('aes-128-cbc')
-        decipher.decrypt
-        decipher.key = secret_key
-        decipher.iv  = INIT_VECTOR
-        decrypted_text = (decipher.update(encrypted_text) + decipher.final).gsub(/\0+$/, '')
-        return decrypted_text
     end
 
   end

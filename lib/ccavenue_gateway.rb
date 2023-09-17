@@ -2,6 +2,7 @@
 
 require_relative "ccavenue_gateway/version"
 require 'ccavenue_gateway/env'
+require 'ccavenue_gateway/aes_crypto'
 require 'ccavenue_gateway/configuration'
 require 'ccavenue_gateway/instance'
 require 'ccavenue_gateway/client'

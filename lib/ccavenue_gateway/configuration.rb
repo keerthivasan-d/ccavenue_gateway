@@ -51,7 +51,7 @@ module CcavenueGateway
       raise ConfigNotFoundError, "IDP setting not found for the Account" unless idp_setting
 
       {
-        merchant_id: idp_setting.pg_public_key,
+        merchant_id: find_value_by_name(:ccavenue_gateway, :merchant_id),
         access_code: idp_setting.pg_public_key,
         working_key: idp_setting.pg_private_key
       }
